@@ -12,16 +12,31 @@ from sklearn.metrics import confusion_matrix, precision_score, recall_score, acc
 from torchvision.models import ResNet18_Weights
 from PIL import Image
 import numpy as np
+import json
 
-# Set the train size ratio
-train_size_ratio = 0.7
-# Set the minimum and maximum number of epochs
-min_epochs = 5
-max_epochs = 15
-# Set the patience for early stopping
-patience = 3
-# Number of runs
-num_runs = 2
+
+# Load configuration from config.json
+with open('config.json', 'r') as f:
+    config = json.load(f)
+
+# Set parameters from config
+    base_dir = config.get ('base_dir' , '.')
+    dataset_dir = config.get('dataset_dir', 'dataset')
+    train_size_ratio = config.get('train_size_ratio', .7)
+    train_val_split_ratio = config.get('train_val_split_ratio', .8)
+    min_epochs = config.get('min_epochs',5)
+    max_epochs = config.get('max_epochs',15)
+    patience = config.get('patience',3)
+    num_runs = config.get('num_runs',1)
+    batch_size = config.get('batch_size', 32)
+    learning_rate = config.get('learning_rate',0.001)
+    transform_resize = config.get('transform_resize', [224, 224])
+    transform_mean = config.get('transform_mean',[0.485, 0.456, 0.406])
+    transform_std = config.get('transform_std',[0.229, 0.224, 0.225])
+    dataset_percentage = config.get('dataset_percentage', 10) / 100  # Default to 10% if not specified
+    improvement_threshold = config.get('improvement_threshold', 0.001)  # Default improvement threshold
+
+
 
 # Function to create directories for the current run
 def create_timestamped_folders(base_dir):
@@ -33,8 +48,8 @@ def create_timestamped_folders(base_dir):
     os.makedirs(test_dir, exist_ok=True)
     return run_dir, train_dir, test_dir
 
-# Function to copy files to train and test directories
-def split_data(source_dir, train_dir, test_dir, train_ratio):
+# Function to copy files to train and test directories / it only use dataset_percentage of the dataset
+def split_data(source_dir, train_dir, test_dir, train_ratio, dataset_percentage):
     classes = os.listdir(source_dir)
     for cls in classes:
         class_dir = os.path.join(source_dir, cls)
@@ -45,6 +60,11 @@ def split_data(source_dir, train_dir, test_dir, train_ratio):
             os.makedirs(test_class_dir, exist_ok=True)
             files = os.listdir(class_dir)
             random.shuffle(files)
+            
+            # Select only a percentage of the dataset
+            selected_files_count = int(len(files) * dataset_percentage)
+            files = files[:selected_files_count]
+            
             split_idx = int(len(files) * train_ratio)
             train_files = files[:split_idx]
             test_files = files[split_idx:]
@@ -52,6 +72,8 @@ def split_data(source_dir, train_dir, test_dir, train_ratio):
                 shutil.copy(os.path.join(class_dir, file), os.path.join(train_class_dir, file))
             for file in test_files:
                 shutil.copy(os.path.join(class_dir, file), os.path.join(test_class_dir, file))
+
+
 
 # Function to save misclassified images
 def save_misclassified_image(image_path, save_dir, class_name):
@@ -94,9 +116,7 @@ class ImageFolderWithPaths(datasets.ImageFolder):
         path = self.imgs[index][0]
         return original_tuple + (path,)
 
-# Base directory and dataset directory
-base_dir = '.'
-dataset_dir = 'dataset'
+
 
 # Main timestamped folder for all runs
 main_run_dir = os.path.join(base_dir, f"main_run_{time.strftime('%Y%m%d-%H%M%S')}")
@@ -116,13 +136,13 @@ for run in range(num_runs):
     run_dir, train_dir, test_dir = create_timestamped_folders(main_run_dir)
 
     # Split data into train and test sets
-    split_data(dataset_dir, train_dir, test_dir, train_size_ratio)
+    split_data(dataset_dir, train_dir, test_dir, train_size_ratio, dataset_percentage)
 
     # Define Data Transformations
     transform = transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize(transform_resize),
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        transforms.Normalize(mean=transform_mean, std=transform_std),
     ])
 
     # Load datasets
@@ -130,7 +150,7 @@ for run in range(num_runs):
     test_dataset = datasets.ImageFolder(test_dir, transform=transform)
 
     # Split train dataset into training and validation
-    train_size = int(.8 * len(train_dataset))
+    train_size = int(train_val_split_ratio * len(train_dataset))
     val_size = len(train_dataset) - train_size
     train_dataset, val_dataset = random_split(train_dataset, [train_size, val_size])
 
@@ -153,7 +173,7 @@ for run in range(num_runs):
 
     # Set Up Training Components
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.001)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, 'min', patience=patience, factor=0.1)
 
     # Move the model to GPU if available
@@ -232,7 +252,7 @@ for run in range(num_runs):
         scheduler.step(val_epoch_loss)
 
         # Check early stopping condition
-        if val_epoch_loss < best_val_loss:
+        if best_val_loss - val_epoch_loss > improvement_threshold:
             best_val_loss = val_epoch_loss
             epochs_no_improve = 0
             best_model_wts = model.state_dict()  # Save the best model weights
