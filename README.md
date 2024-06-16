@@ -11,7 +11,7 @@ This project aims to develop a neural network-based classifier to detect
 
 
 ## Method:  
-This project implements an anomaly detection algorithm for identifying defects in metal surfaces using a convolutional neural network (CNN). The neural network is built using the PyTorch library and utilizes the ResNet18 model pre-trained on the ImageNet dataset. The project includes several key features such as dynamic epoch determination with early stopping, dataset splitting into training and testing sets, data transformations, and calculation of various performance metrics.
+This project implements an anomaly detection algorithm using a convolutional neural network (CNN) to identify rotten apples. The neural network is built using the PyTorch library and utilizes the ResNet18 model pre-trained on the ImageNet dataset. The project includes several key features such as dynamic epoch determination with early stopping, dataset splitting into training and testing sets, data transformations, and calculation of various performance metrics.
 ### Code Explanation  
 **Model Architecture:** The project uses the ResNet18 architecture, which is a well-known convolutional neural network pre-trained on the ImageNet dataset. The final layer of ResNet18 is replaced with a fully connected layer to accommodate binary classification (defective or non-defective).  
 **Dynamic Epochs:** The training loop runs for a minimum of 5 epochs and a maximum of 15 epochs. However, if the model's performance on the validation set does not improve for a specified number of consecutive epochs (patience = 3), the training stops early to prevent overfitting.  
@@ -31,7 +31,23 @@ After training, the model is evaluated on both the training and testing datasets
 **Multiple Runs:** The entire training and evaluation process is repeated for a specified number of runs (10 by default). This helps in assessing the model's stability and consistency across different runs.  
 **Averaging Statistics:** The average values of all calculated metrics across the runs are computed and stored in a separate file. This provides a comprehensive overview of the model's performance.  
 ## Result:
-
+## Configuration
+The project uses a JSON configuration file (config.json) to set various parameters for the anomaly detection algorithm. Below is an explanation of each parameter included in the configuration file:    
++ **base_dir:** The base directory for the project. _(Default: '.')_    
++ **dataset_dir:** The directory where the dataset is stored._(Default: 'dataset')_    
++ **train_size_ratio:** The ratio of the dataset to be used for training. The remaining data is used for testing._(Default: '.7')_      
++ **min_epochs:** The minimum number of epochs to train the model._(Default: '5')_      
++ **max_epochs:** The maximum number of epochs to train the model._(Default: '15')_      
++ **patience:** The number of epochs to wait for an improvement in validation loss before stopping early._(Default: '3')_      
++ **num_runs:** The number of times to run the training and evaluation process for averaging results._(Default: '10')_      
++ **batch_size:** The batch size used for training the model._(Default: '32')_      
++ **learning_rate:** The learning rate for the optimizer._(Default: '.001')_      
++ **transform_resize:** The dimensions to which input images will be resized._(Default: '[224, 224]')_      
++ **transform_mean:** The mean values for normalizing the images._(Default: '[0.485, 0.456, 0.406]')_      
++ **transform_std:** The standard deviation values for normalizing the images._(Default: '[0.229, 0.224, 0.225]')_      
++ **train_val_split_ratio:** The ratio of the training dataset to be used for validation._(Default: '0.8')_      
++ **dataset_percentage:** The percentage of the original dataset to be used in each run. This helps in running the code faster during early stages of implementation._(Default: '100')_     
++ **improvement_threshold:** The threshold for considering an improvement in validation loss to reset the early stopping patience counter._(Default: '.001')_      
 ## Contributing:
 Feel free to contribute to this project by opening issues or submitting pull requests.
 
