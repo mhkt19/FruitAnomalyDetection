@@ -1,5 +1,5 @@
 # Fruit Anomaly Detection  
-This project aims to develop a neural network-based classifier to detect 
+This project aims to develop a neural network-based classifier to detect anomalies (rotten apples) in a dataset of apples using PyTorch.
 ## Requirements  
 - Python 3.x
 - PyTorch
